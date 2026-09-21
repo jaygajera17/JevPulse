@@ -1,0 +1,236 @@
+/**
+ * Audience Consensus & Signals Aggregator
+ */
+
+/**
+ * Generate a visual ASCII bar chart.
+ *
+ * @param {number} percentage - 0 to 100
+ * @param {number} width - bar width in characters
+ * @returns {string}
+ */
+export function renderBar(percentage, width = 20) {
+  const filled = Math.round((percentage / 100) * width);
+  const empty = width - filled;
+  return '█'.repeat(filled) + '░'.repeat(empty);
+}
+
+/**
+ * Build the full consensus report from analyzed comments and rubric.
+ *
+ * @param {Array<object>} analyzedComments - Output of analyzeComments
+ * @param {object} rubric - { video_type, video_summary, criteria }
+ * @param {object} videoContext - { title, channelTitle }
+ * @returns {object} Aggregated stats and formatted report
+ */
+export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
+  const total = analyzedComments.length;
+  if (total === 0) {
+    return {
+      meta: {
+        videoTitle: videoContext.title || 'Untitled',
+        channelTitle: videoContext.channelTitle || 'Unknown',
+        videoType: rubric.video_type || 'general',
+        videoSummary: rubric.video_summary || '',
+        totalAnalyzed: 0,
+        opinionBearing: 0,
+        opinionPercentage: 0,
+      },
+      typeBreakdown: {},
+      criteria: [],
+      signals: {
+        praises: [],
+        criticisms: [],
+        questions: [],
+        suggestions: [],
+        corrections: [],
+      },
+    };
+  }
+
+  // 1. Layer 1 Aggregations: Opinion filtering and Comment Types
+  const substantiveComments = analyzedComments.filter(
+    (c) => c.layer1.isOpinion >= 0.5 || c.layer1.specificity >= 1
+  );
+
+  const typeCounts = {};
+  for (const c of analyzedComments) {
+    const type = c.layer1.commentType || 'other';
+    typeCounts[type] = (typeCounts[type] || 0) + 1;
+  }
+
+  // 2. Layer 2 Aggregations: Dynamic Rubric Consensus
+  const consensusCriteria = rubric.criteria.map((criterion) => {
+    const scores = substantiveComments.map((c) => c.layer2[criterion.id] ?? 0);
+    // Positive stance: noul >= 0.6
+    const positiveCount = scores.filter((s) => s >= 0.6).length;
+    const evaluatedCount = substantiveComments.length;
+    const percentage = evaluatedCount > 0 ? Math.round((positiveCount / evaluatedCount) * 100) : 0;
+
+    // Average confidence / intensity
+    const avgScore =
+      evaluatedCount > 0
+        ? (scores.reduce((a, b) => a + b, 0) / evaluatedCount).toFixed(2)
+        : '0.00';
+
+    return {
+      id: criterion.id,
+      name: criterion.name,
+      question: criterion.question,
+      percentage,
+      positiveCount,
+      evaluatedCount,
+      avgScore,
+    };
+  });
+
+  // 3. Layer 1 Signals: Extract top comments by category
+  const getTopComments = (filterFn, limit = 3) => {
+    return [...analyzedComments]
+      .filter(filterFn)
+      .sort((a, b) => b.likeCount - a.likeCount)
+      .slice(0, limit)
+      .map((c) => ({
+        text: c.text,
+        likeCount: c.likeCount,
+        author: c.author,
+        publishedAt: c.publishedAt,
+      }));
+  };
+
+  const topPraises = getTopComments(
+    (c) => c.layer1.commentType === 'praise' || c.layer1.commentType === 'agreement'
+  );
+
+  const topCriticisms = getTopComments(
+    (c) => c.layer1.commentType === 'criticism' || c.layer1.commentType === 'disagreement'
+  );
+
+  const topQuestions = getTopComments(
+    (c) => c.layer1.commentType === 'question'
+  );
+
+  const topSuggestions = getTopComments(
+    (c) => c.layer1.commentType === 'suggestion'
+  );
+
+  const topCorrections = getTopComments(
+    (c) => c.layer1.commentType === 'correction'
+  );
+
+  return {
+    meta: {
+      videoId: videoContext.videoId || '',
+      videoTitle: videoContext.title || 'Untitled',
+      channelTitle: videoContext.channelTitle || 'Unknown',
+      videoType: rubric.video_type,
+      videoSummary: rubric.video_summary,
+      totalAnalyzed: total,
+      opinionBearing: substantiveComments.length,
+      opinionPercentage: Math.round((substantiveComments.length / total) * 100),
+    },
+    rubric: {
+      videoType: rubric.video_type,
+      videoSummary: rubric.video_summary,
+      criteriaCount: rubric.criteria.length,
+    },
+    typeBreakdown: typeCounts,
+    criteria: consensusCriteria,
+    signals: {
+      praises: topPraises,
+      criticisms: topCriticisms,
+      questions: topQuestions,
+      suggestions: topSuggestions,
+      corrections: topCorrections,
+    },
+  };
+}
+
+/**
+ * Format the consensus object into a clean readable text report.
+ *
+ * @param {object} consensus
+ * @returns {string}
+ */
+export function formatReport(consensus) {
+  const { meta, typeBreakdown, criteria, signals } = consensus;
+  const lines = [];
+
+  const hr = '═'.repeat(64);
+  const subhr = '─'.repeat(64);
+
+  lines.push('');
+  lines.push(hr);
+  lines.push(` 📊 YOUTUBE AUDIENCE CONSENSUS REPORT`);
+  lines.push(hr);
+  lines.push(` Video:   ${meta.videoTitle}`);
+  lines.push(` Channel: ${meta.channelTitle}`);
+  lines.push(` Category: [${(meta.videoType || 'general').toUpperCase()}]`);
+  lines.push(` Summary:  ${meta.videoSummary}`);
+  lines.push(` Sample:   ${meta.totalAnalyzed} comments (${meta.opinionPercentage}% opinion-bearing)`);
+  lines.push(subhr);
+
+  // Section 1: Audience Verdict (Dynamic Rubric Criteria)
+  lines.push('');
+  lines.push(` 🎓 AUDIENCE CONSENSUS VERDICT`);
+  lines.push(` (Dynamic criteria generated specifically for this video)`);
+  lines.push('');
+
+  for (const c of criteria) {
+    const bar = renderBar(c.percentage, 22);
+    lines.push(`  ${c.name.padEnd(28)} [${bar}] ${String(c.percentage).padStart(3)}%`);
+    lines.push(`  ↳ "${c.question}"`);
+    lines.push(`    Support: ${c.positiveCount}/${c.evaluatedCount} substantive comments (avg intensity: ${c.avgScore})`);
+    lines.push('');
+  }
+
+  lines.push(subhr);
+
+  // Section 2: Comment Type Breakdown
+  lines.push('');
+  lines.push(` 📈 AUDIENCE INTENT BREAKDOWN`);
+  const typeEntries = Object.entries(typeBreakdown).sort((a, b) => b[1] - a[1]);
+  for (const [type, count] of typeEntries) {
+    const pct = meta.totalAnalyzed > 0 ? Math.round((count / meta.totalAnalyzed) * 100) : 0;
+    const bar = renderBar(pct, 12);
+    lines.push(`  • ${type.padEnd(14)} : ${String(count).padStart(3)} (${pct.toString().padStart(2)}%) [${bar}]`);
+  }
+  lines.push('');
+  lines.push(subhr);
+
+  // Section 3: Audience Signals (Viral Key Takeaways)
+  lines.push('');
+  lines.push(` ⚡ AUDIENCE SIGNALS & KEY FEEDBACK`);
+  lines.push(` (Ranked by audience agreement & engagement)`);
+
+  const printCommentGroup = (title, icon, items) => {
+    lines.push('');
+    lines.push(` ${icon} ${title.toUpperCase()} (${items.length}):`);
+    if (!items || items.length === 0) {
+      lines.push(`    (None detected in this sample)`);
+      return;
+    }
+    items.forEach((item, idx) => {
+      const cleanText = (item.text || '').replace(/\n+/g, ' ').trim();
+      const snippet = cleanText.length > 180 ? `${cleanText.slice(0, 180)}...` : cleanText;
+      lines.push(`    ${idx + 1}. [👍 ${item.likeCount} likes] @${item.author}:`);
+      lines.push(`       "${snippet}"`);
+    });
+  };
+
+  printCommentGroup('Most Agreed-Upon Praise / Positive Feedback', '🔥', signals.praises);
+  printCommentGroup('Most Common Criticisms & Concerns', '⚠️', signals.criticisms);
+  printCommentGroup('Most Asked Questions', '❓', signals.questions);
+  printCommentGroup('Top Suggestions & Feature Requests', '💡', signals.suggestions);
+  if (signals.corrections && signals.corrections.length > 0) {
+    printCommentGroup('Corrections & Bug Reports', '📝', signals.corrections);
+  }
+
+  lines.push('');
+  lines.push(hr);
+  lines.push(` End of Consensus Report`);
+  lines.push(hr);
+  lines.push('');
+
+  return lines.join('\n');
+}
