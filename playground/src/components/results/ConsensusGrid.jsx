@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, MessageSquare, CheckCircle } from 'lucide-react';
+import { ArrowRight, MessageSquare } from 'lucide-react';
 
 export function ConsensusGrid({ criteria, onSelectCriterion }) {
   if (!criteria || criteria.length === 0) return null;
@@ -18,8 +18,12 @@ export function ConsensusGrid({ criteria, onSelectCriterion }) {
       <div className="consensus-grid">
         {criteria.map((c) => {
           const posCount =
-            c.positiveCount ?? Math.round(((c.evaluatedCount || 0) * (c.percentage || 0)) / 100);
-          const ratio = c.stanceRatio ?? c.percentage;
+            c.positiveCount ??
+            (c.evidence?.supporting?.length !== undefined
+              ? c.evidence.supporting.length
+              : Math.round(((c.evaluatedCount || 0) * (c.percentage || 0)) / 100));
+
+          const ratio = c.stanceRatio ?? c.percentage ?? 0;
 
           // Determine badge color: if ratio or count is strong, show green/blue
           const badgeClass = ratio >= 65 || posCount >= 30 ? 'high' : ratio >= 35 ? 'mid' : 'low';

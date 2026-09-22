@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { LandingHero } from './components/landing/LandingHero';
 import { HowItWorks } from './components/landing/HowItWorks';
 import { VideoCard } from './components/analyzing/VideoCard';
 import { PipelineStepper } from './components/analyzing/PipelineStepper';
 import { RubricReveal } from './components/analyzing/RubricReveal';
-import { JevProgress } from './components/analyzing/JevProgress';
+import { JevMissionControl } from './components/analyzing/JevMissionControl';
 import { ResultsHeader } from './components/results/ResultsHeader';
 import { TopInsights } from './components/results/TopInsights';
 import { ConsensusGrid } from './components/results/ConsensusGrid';
@@ -23,15 +23,19 @@ export default function App() {
     videoMeta,
     commentsCount,
     rubric,
+    jevStartTime,
     jevProgress,
     results,
     error,
     elapsedSeconds,
+    elapsedMs,
+    telemetry,
     startAnalysis,
     reset,
   } = useSSEAnalysis();
 
   const [selectedCriterion, setSelectedCriterion] = useState(null);
+  const missionControlRef = useRef(null);
 
   const isAnalyzing =
     phase === PHASES.CONNECTING ||
@@ -41,6 +45,13 @@ export default function App() {
     phase === PHASES.ANALYZING_JEV;
 
   const isComplete = phase === PHASES.COMPLETE && results;
+
+  // Auto-scroll to Mission Control when Jev analysis begins so user focuses on the real-time USP
+  useEffect(() => {
+    if (phase === PHASES.ANALYZING_JEV) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [phase]);
 
   return (
     <>
@@ -89,34 +100,42 @@ export default function App() {
 
         {/* Live Analyzing State */}
         {isAnalyzing && (
-          <div style={{ padding: '32px 0' }}>
+          <div style={{ padding: '32px 0' }} ref={missionControlRef}>
             <PipelineStepper phase={phase} />
 
-            {videoMeta ? (
-              <VideoCard meta={videoMeta} />
-            ) : (
-              <div
-                style={{
-                  padding: '32px',
-                  textAlign: 'center',
-                  background: 'var(--bg-card)',
-                  borderRadius: 'var(--radius-lg)',
-                  border: '1px solid var(--border-subtle)',
-                  marginBottom: '24px',
-                }}
-              >
-                <p style={{ color: 'var(--text-secondary)' }}>Connecting to YouTube stream...</p>
-              </div>
-            )}
-
-            {rubric && <RubricReveal rubric={rubric} />}
-
-            {(phase === PHASES.ANALYZING_JEV || jevProgress.processedCount > 0) && (
-              <JevProgress
+            {/* During JEV analysis, show Mission Control front-and-center so user never has to scroll */}
+            {phase === PHASES.ANALYZING_JEV ? (
+              <JevMissionControl
+                videoMeta={videoMeta}
+                rubric={rubric}
                 jevProgress={jevProgress}
                 totalComments={commentsCount || jevProgress.totalComments || 0}
+                jevStartTime={jevStartTime}
                 elapsedSeconds={elapsedSeconds}
+                elapsedMs={elapsedMs}
+                isComplete={false}
               />
+            ) : (
+              <>
+                {videoMeta ? (
+                  <VideoCard meta={videoMeta} />
+                ) : (
+                  <div
+                    style={{
+                      padding: '32px',
+                      textAlign: 'center',
+                      background: 'var(--bg-card)',
+                      borderRadius: 'var(--radius-lg)',
+                      border: '1px solid var(--border-subtle)',
+                      marginBottom: '24px',
+                    }}
+                  >
+                    <p style={{ color: 'var(--text-secondary)' }}>Connecting to YouTube stream...</p>
+                  </div>
+                )}
+
+                {rubric && <RubricReveal rubric={rubric} />}
+              </>
             )}
           </div>
         )}
@@ -127,6 +146,7 @@ export default function App() {
             <ResultsHeader
               meta={results.meta}
               elapsedSeconds={elapsedSeconds}
+              telemetry={telemetry || results.telemetry}
               onReset={reset}
             />
 
@@ -144,6 +164,7 @@ export default function App() {
             <AudiencePulse
               breakdown={results.typeBreakdown}
               total={results.meta?.totalAnalyzed || commentsCount || 0}
+              videoCommentCount={videoMeta?.commentCount || results.meta?.commentCount}
             />
 
             <TopInsights

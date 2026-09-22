@@ -67,12 +67,26 @@ const CATEGORY_META = {
   },
 };
 
-export function AudiencePulse({ breakdown = {}, total = 0 }) {
+function formatCount(numStr) {
+  const n = parseInt(numStr, 10);
+  if (isNaN(n)) return numStr || '';
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+
+export function AudiencePulse({ breakdown = {}, total = 0, videoCommentCount = null }) {
   if (!breakdown || total === 0) return null;
 
   const entries = Object.entries(breakdown)
-    .filter(([_, count]) => count > 0)
+    .filter(([, count]) => count > 0)
     .sort((a, b) => b[1] - a[1]);
+
+  const totalStr = formatCount(videoCommentCount);
+  const subtitle =
+    totalStr && parseInt(videoCommentCount, 10) > total
+      ? `Full coverage: ${total.toLocaleString()} accessible comments analyzed out of ${totalStr} total on YouTube`
+      : `Full coverage: ${total.toLocaleString()} accessible comments analyzed by intent & sentiment`;
 
   return (
     <div className="audience-pulse-card" style={{ marginBottom: '28px' }}>
@@ -86,7 +100,7 @@ export function AudiencePulse({ breakdown = {}, total = 0 }) {
               Audience Pulse
             </h3>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
-              Full coverage: all {total.toLocaleString()} comments categorized by intent & sentiment
+              {subtitle}
             </p>
           </div>
         </div>

@@ -529,6 +529,41 @@ input {
   background: var(--pos-green);
 }
 
+.step-label-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.step-usp-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--jev-cyan-glow);
+  color: var(--jev-cyan);
+  border: 1px solid var(--jev-cyan-border);
+  padding: 1px 7px;
+  border-radius: var(--radius-full);
+}
+
+.pulse-radar {
+  box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.5);
+  animation: radarWave 1.4s infinite cubic-bezier(0, 0, 0.2, 1);
+}
+
+@keyframes radarWave {
+  0% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(14, 165, 233, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+  }
+}
+
 /* Rubric Card in Progress View (What matters in this video) */
 .rubric-card {
   background: #FFFFFF;
@@ -1022,6 +1057,38 @@ input {
   flex-shrink: 0;
 }
 
+.criterion-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.criterion-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: -0.01em;
+}
+
+.criterion-badge-pill.pos {
+  background: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+
+.criterion-badge-pill.neg {
+  background: #FEF2F2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
+}
+
 .criterion-badge.high {
   background: #ECFDF5;
   color: #065F46;
@@ -1055,10 +1122,26 @@ input {
   margin-bottom: 12px;
 }
 
+.consensus-meter.dual-track {
+  display: flex;
+  background: #E2E8F0;
+  gap: 1px;
+}
+
 .consensus-meter-fill {
   height: 100%;
   border-radius: var(--radius-full);
   transition: width 0.4s ease;
+}
+
+.consensus-meter-fill.pos {
+  background: var(--pos-green);
+  border-radius: var(--radius-full) 0 0 var(--radius-full);
+}
+
+.consensus-meter-fill.neg {
+  background: #F87171;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
 }
 
 .criterion-card-footer {
@@ -1070,6 +1153,33 @@ input {
   border-top: 1px solid var(--border-subtle);
   padding-top: 12px;
   margin-top: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.criterion-counts-breakdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+
+.count-tag-agreed {
+  color: #047857;
+}
+
+.count-tag-disagreed {
+  color: #B91C1C;
+}
+
+.count-sep {
+  color: var(--text-dim);
+}
+
+.count-sub-pct {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .view-evidence-btn {
@@ -1340,3 +1450,757 @@ input {
     display: none;
   }
 }
+
+/* ==========================================================================
+   JEV MISSION CONTROL (LIVE INTELLIGENCE THEATRE)
+   ========================================================================== */
+
+.mission-control-container {
+  background: #FFFFFF;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  box-shadow: 0 16px 40px -10px rgba(14, 165, 233, 0.15), 0 0 0 1px rgba(14, 165, 233, 0.1);
+  margin-bottom: 32px;
+  position: relative;
+  overflow: hidden;
+  animation: fadeInMissionControl 0.4s var(--ease-spring);
+}
+
+@keyframes fadeInMissionControl {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Ambient glow in mission control */
+.mission-control-container::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  right: -80px;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Top header bar */
+.mc-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.mc-video-badge {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 65%;
+}
+
+.mc-thumb {
+  width: 64px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  border: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.mc-video-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mc-video-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mc-video-channel {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.mc-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: #F0F9FF;
+  color: var(--jev-cyan);
+  border: 1px solid var(--jev-cyan-border);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+}
+
+.mc-radar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--jev-cyan);
+  box-shadow: 0 0 10px var(--jev-cyan);
+  animation: radarWave 1.2s infinite ease-out;
+}
+
+/* Hero Clock Showcase */
+.mc-hero-clock-panel {
+  background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+  border-radius: var(--radius-lg);
+  padding: 24px 32px;
+  margin-bottom: 24px;
+  color: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mc-hero-clock-panel::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #0EA5E9, #8B5CF6, transparent);
+}
+
+.mc-clock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.mc-clock-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94A3B8;
+}
+
+.mc-model-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #38BDF8;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+
+.mc-model-pill .pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38BDF8;
+}
+
+/* Live Timer Monospace Digits */
+.live-timer-wrap {
+  text-align: center;
+}
+
+.live-timer-digits {
+  font-family: var(--font-mono);
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  color: #F8FAFC;
+  text-shadow: 0 0 24px rgba(14, 165, 233, 0.45);
+}
+
+.timer-unit.min-sec {
+  color: #FFFFFF;
+}
+
+.timer-separator {
+  color: #38BDF8;
+  opacity: 0.8;
+  margin: 0 2px;
+}
+
+.timer-unit.millis {
+  color: #38BDF8;
+  font-size: 46px;
+  min-width: 90px;
+  text-align: left;
+}
+
+.live-timer-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #64748B;
+  margin-top: 8px;
+}
+
+.timer-pulse-ring {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38BDF8;
+  box-shadow: 0 0 8px #38BDF8;
+}
+
+.mc-clock-sub {
+  margin-top: 14px;
+}
+
+.speed-badge {
+  font-size: 13px;
+  color: #E2E8F0;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+}
+
+.speed-badge strong {
+  color: #38BDF8;
+  font-family: var(--font-mono);
+}
+
+/* 4-Column Live Telemetry Cards */
+.mc-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.mc-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.mc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.mc-card.highlight-cyan {
+  border-color: #BAE6FD;
+  background: linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 100%);
+}
+
+.mc-card.highlight-purple {
+  border-color: #DDD6FE;
+  background: linear-gradient(180deg, #FAF5FF 0%, #FFFFFF 100%);
+}
+
+.mc-card.highlight-amber {
+  border-color: #FDE68A;
+  background: linear-gradient(180deg, #FFFBEB 0%, #FFFFFF 100%);
+}
+
+.mc-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mc-card-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mc-card-tag {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+}
+
+.mc-card-tag.cyan {
+  background: #E0F2FE;
+  color: #0284C7;
+}
+
+.mc-card-tag.green {
+  background: #DCFCE7;
+  color: #16A34A;
+}
+
+.mc-card-tag.purple {
+  background: #F3E8FF;
+  color: #7E22CE;
+}
+
+.mc-card-tag.amber {
+  background: #FEF3C7;
+  color: #D97706;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.mc-card-val {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+.mc-card-val.text-purple {
+  color: var(--rubric-purple);
+}
+
+.mc-card-val.text-amber {
+  color: #D97706;
+}
+
+.val-unit {
+  font-size: 18px;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.val-max {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.mc-card-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+/* Progress bar in Mission Control */
+.mc-progress-section {
+  margin-bottom: 24px;
+}
+
+.mc-progress-bar-wrap {
+  width: 100%;
+  height: 10px;
+  background: #F1F5F9;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--border-subtle);
+}
+
+.mc-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0EA5E9, #3B82F6, #8B5CF6);
+  border-radius: var(--radius-full);
+  position: relative;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mc-progress-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: sweep 1.5s infinite;
+}
+
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.mc-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.progress-status-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.progress-status-msg .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--jev-cyan);
+}
+
+.progress-pct-badge {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--jev-cyan);
+  background: #F0F9FF;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--jev-cyan-border);
+}
+
+/* Live Decision Feed */
+.decision-feed-container {
+  background: #0B1120;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.decision-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 12px;
+}
+
+.feed-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #38BDF8;
+}
+
+.feed-title .terminal-icon {
+  color: #38BDF8;
+}
+
+.feed-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #4ADE80;
+  background: rgba(74, 222, 128, 0.12);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.feed-status-badge .live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ADE80;
+}
+
+.decision-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 160px;
+}
+
+.feed-empty {
+  color: #64748B;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: center;
+  padding: 30px 0;
+}
+
+.decision-feed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.decision-feed-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.animate-feed-row {
+  animation: slideInFeed 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInFeed {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.feed-row-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.feed-comment-idx {
+  color: #94A3B8;
+  font-weight: 700;
+}
+
+.feed-sentiment-badge {
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.feed-sentiment-badge.positive {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34D399;
+}
+
+.feed-sentiment-badge.negative {
+  background: rgba(239, 68, 68, 0.2);
+  color: #F87171;
+}
+
+.feed-sentiment-badge.mixed, .feed-sentiment-badge.neutral {
+  background: rgba(14, 165, 233, 0.2);
+  color: #38BDF8;
+}
+
+.feed-criterion-pill {
+  font-size: 11px;
+  color: #C084FC;
+  background: rgba(192, 132, 252, 0.12);
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+}
+
+.feed-row-center {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.feed-text {
+  color: #E2E8F0;
+  font-size: 11px;
+}
+
+.feed-row-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.feed-conf {
+  color: #FBBF24;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.feed-time {
+  color: #64748B;
+  font-size: 11px;
+}
+
+/* Criteria Pills row in Mission Control */
+.mc-criteria-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #F8FAFC;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  flex-wrap: wrap;
+}
+
+.criteria-bar-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.criteria-pills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mc-criterion-chip {
+  background: #FFFFFF;
+  border: 1px solid #DDD6FE;
+  color: var(--rubric-purple);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ==========================================================================
+   RESULTS TELEMETRY RECAP BANNER
+   ========================================================================== */
+
+.results-header-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.results-telemetry-recap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 12px 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.recap-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.recap-label {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.recap-value {
+  font-weight: 800;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.recap-pill.highlight-gold {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+}
+
+.recap-pill.highlight-gold .recap-value {
+  color: #B45309;
+}
+
+.recap-savings {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #15803D;
+  background: #DCFCE7;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  margin-left: 4px;
+}
+
+/* Mission Control Responsive rules */
+@media (max-width: 900px) {
+  .mc-telemetry-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .live-timer-digits {
+    font-size: 48px;
+  }
+}
+
+@media (max-width: 600px) {
+  .mc-telemetry-grid {
+    grid-template-columns: 1fr;
+  }
+  .live-timer-digits {
+    font-size: 38px;
+  }
+  .mc-header-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .mc-video-badge {
+    max-width: 100%;
+  }
+}
+

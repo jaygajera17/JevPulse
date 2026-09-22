@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getApiUrl } from '../config/api';
 
 export const PHASES = {
@@ -12,25 +12,53 @@ export const PHASES = {
   ERROR: 'ERROR',
 };
 
+// TypeSafe Jev 1.13 pricing: $0.042 per 1M input tokens ($42 per billion tokens).
+// Each comment evaluation averages ~150 input tokens per decision (including state, criteria, instruction).
+// 150 * (0.042 / 1,000,000) = $0.0000063 per decision.
+export const JEV_COST_PER_DECISION = 0.0000063;
+
+export function formatUsd(amount) {
+  if (!amount || amount <= 0) return '$0.0000';
+  if (amount < 0.01) {
+    return `$${amount.toFixed(4)}`;
+  }
+  return `$${amount.toFixed(3)}`;
+}
+
 export function useSSEAnalysis() {
   const [phase, setPhase] = useState(PHASES.IDLE);
   const [videoMeta, setVideoMeta] = useState(null);
   const [commentsCount, setCommentsCount] = useState(0);
   const [rubric, setRubric] = useState(null);
+  const [jevStartTime, setJevStartTime] = useState(null);
   const [jevProgress, setJevProgress] = useState({
     batchIndex: 0,
     totalBatches: 0,
     processedCount: 0,
     totalComments: 0,
     decisionsCount: 0,
+    estimatedCostUsd: 0,
+    costFormatted: '$0.0000',
   });
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
-  const [elapsedSeconds, setElapsedSeconds] = useState('0.0');
+  const [elapsedSeconds, setElapsedSeconds] = useState('0.000');
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [telemetry, setTelemetry] = useState(null);
 
   const eventSourceRef = useRef(null);
   const timerIntervalRef = useRef(null);
   const jevStartTimeRef = useRef(null);
+  const rubricRef = useRef(null);
+  const jevProgressRef = useRef(jevProgress);
+
+  useEffect(() => {
+    jevProgressRef.current = jevProgress;
+  }, [jevProgress]);
+
+  useEffect(() => {
+    rubricRef.current = rubric;
+  }, [rubric]);
 
   const clearTimer = useCallback(() => {
     if (timerIntervalRef.current) {
@@ -46,7 +74,10 @@ export function useSSEAnalysis() {
     }
     clearTimer();
     jevStartTimeRef.current = null;
-    setElapsedSeconds('0.0');
+    setJevStartTime(null);
+    setElapsedSeconds('0.000');
+    setElapsedMs(0);
+    setTelemetry(null);
     setPhase(PHASES.IDLE);
     setVideoMeta(null);
     setCommentsCount(0);
@@ -57,6 +88,8 @@ export function useSSEAnalysis() {
       processedCount: 0,
       totalComments: 0,
       decisionsCount: 0,
+      estimatedCostUsd: 0,
+      costFormatted: '$0.0000',
     });
     setResults(null);
     setError(null);
@@ -107,44 +140,89 @@ export function useSSEAnalysis() {
             setPhase(PHASES.GENERATING_RUBRIC);
             break;
 
-          case 'RUBRIC_READY':
-            setRubric({
+          case 'RUBRIC_READY': {
+            const rubricData = {
               video_type: data.video_type,
               video_summary: data.video_summary,
               criteria: data.criteria || [],
-            });
+            };
+            setRubric(rubricData);
+            rubricRef.current = rubricData;
             setPhase(PHASES.ANALYZING_JEV);
-            // Start Jev stopwatch with 0.1s precision
-            jevStartTimeRef.current = performance.now();
+
+            // Start Jev high-precision stopwatch
+            const startNow = performance.now();
+            jevStartTimeRef.current = startNow;
+            setJevStartTime(startNow);
             clearTimer();
+
             timerIntervalRef.current = setInterval(() => {
               if (jevStartTimeRef.current) {
-                const sec = (performance.now() - jevStartTimeRef.current) / 1000;
-                setElapsedSeconds(sec.toFixed(1));
+                const ms = Math.round(performance.now() - jevStartTimeRef.current);
+                setElapsedMs(ms);
+                setElapsedSeconds((ms / 1000).toFixed(3));
               }
-            }, 50);
+            }, 30);
             break;
+          }
 
-          case 'ANALYSIS_PROGRESS':
+          case 'ANALYSIS_PROGRESS': {
+            const decisions = data.decisionsCount || 0;
+            const cost = decisions * JEV_COST_PER_DECISION;
             setJevProgress({
               batchIndex: data.batchIndex,
               totalBatches: data.totalBatches,
               processedCount: data.processedCount,
               totalComments: data.totalComments,
-              decisionsCount: data.decisionsCount,
+              decisionsCount: decisions,
+              estimatedCostUsd: cost,
+              costFormatted: formatUsd(cost),
             });
             break;
+          }
 
-          case 'COMPLETE':
+          case 'COMPLETE': {
             clearTimer();
+            let finalMs = 0;
+            let finalSec = '0.000';
             if (jevStartTimeRef.current) {
-              const finalSec = (performance.now() - jevStartTimeRef.current) / 1000;
-              setElapsedSeconds(finalSec.toFixed(1));
+              finalMs = Math.round(performance.now() - jevStartTimeRef.current);
+              finalSec = (finalMs / 1000).toFixed(3);
             }
-            setResults(data);
+            setElapsedMs(finalMs);
+            setElapsedSeconds(finalSec);
+
+            // Compute final decision count & cost
+            const totalAnalyzed = data.meta?.totalAnalyzed || commentsCount || 0;
+            const criteriaCount = rubricRef.current?.criteria?.length || data.criteria?.length || 4;
+            const totalDecisions =
+              jevProgressRef.current.decisionsCount > 0
+                ? jevProgressRef.current.decisionsCount
+                : totalAnalyzed * (4 + criteriaCount);
+
+            const finalCost = totalDecisions * JEV_COST_PER_DECISION;
+            const dps = finalMs > 0 ? Math.round(totalDecisions / (finalMs / 1000)) : 0;
+
+            const finalTelemetry = {
+              elapsedMs: finalMs,
+              elapsedSeconds: finalSec,
+              elapsedFormatted: `${finalSec}s`,
+              decisionsCount: totalDecisions,
+              estimatedCostUsd: finalCost,
+              costFormatted: formatUsd(finalCost),
+              decisionsPerSec: dps,
+              totalComments: totalAnalyzed,
+            };
+
+            setTelemetry(finalTelemetry);
+            setResults({
+              ...data,
+              telemetry: finalTelemetry,
+            });
             setPhase(PHASES.COMPLETE);
             es.close();
             break;
+          }
 
           case 'ERROR':
             clearTimer();
@@ -164,7 +242,6 @@ export function useSSEAnalysis() {
     es.onerror = (err) => {
       console.error('SSE connection error:', err);
       clearTimer();
-      // If we already finished, ignore error on close
       setPhase((prev) => {
         if (prev === PHASES.COMPLETE) return prev;
         setError('Lost connection to analysis server or request timed out.');
@@ -172,17 +249,20 @@ export function useSSEAnalysis() {
       });
       es.close();
     };
-  }, [reset, clearTimer]);
+  }, [reset, clearTimer, commentsCount]);
 
   return {
     phase,
     videoMeta,
     commentsCount,
     rubric,
+    jevStartTime,
     jevProgress,
     results,
     error,
     elapsedSeconds,
+    elapsedMs,
+    telemetry,
     startAnalysis,
     reset,
   };

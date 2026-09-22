@@ -119,6 +119,8 @@ Generate the dynamic analysis rubric as JSON according to the instructions.`;
 
   const candidateModels = config.rubric?.candidateModels || [
     'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.7-flash'
   ];
   let lastError = null;
 

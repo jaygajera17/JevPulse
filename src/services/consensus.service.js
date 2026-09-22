@@ -84,14 +84,17 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
     );
     const positiveCount = supportingComments.length;
 
-    // Genuine opposing comments: low criterion score AND expressing criticism/disagreement/claim
+    // Genuine opposing comments: low criterion score AND expressing criticism/disagreement/correction
+    // Exclude praise and general agreement so enthusiastic comments are never miscategorized as dissent
     const opposingComments = substantiveComments.filter(
       (c) =>
         (c.layer2[criterion.id] ?? 0) <= 0.35 &&
+        c.layer1.commentType !== 'praise' &&
+        c.layer1.commentType !== 'agreement' &&
         (c.layer1.commentType === 'criticism' ||
           c.layer1.commentType === 'disagreement' ||
           c.layer1.commentType === 'correction' ||
-          c.layer1.hasClaim >= 0.5)
+          (c.layer1.hasClaim >= 0.6 && c.layer1.commentType !== 'other'))
     );
     const opposingCount = opposingComments.length;
 
@@ -111,9 +114,15 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
         ? (scores.reduce((a, b) => a + b, 0) / evaluatedCount).toFixed(2)
         : '0.00';
 
-    // Evidence comments for this criterion
+    // Evidence comments for this criterion ranked by top-k confidence level score
     const supporting = supportingComments
-      .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
+      .sort((a, b) => {
+        const scoreA = a.layer2[criterion.id] ?? 0;
+        const scoreB = b.layer2[criterion.id] ?? 0;
+        const diff = scoreB - scoreA;
+        if (Math.abs(diff) > 0.05) return diff;
+        return (b.likeCount || 0) - (a.likeCount || 0);
+      })
       .slice(0, 6)
       .map((c) => ({
         text: c.text,
@@ -124,7 +133,14 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
       }));
 
     const opposing = opposingComments
-      .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
+      .sort((a, b) => {
+        const scoreA = a.layer2[criterion.id] ?? 0;
+        const scoreB = b.layer2[criterion.id] ?? 0;
+        // For dissent, lower affirmative score = higher dissent confidence
+        const diff = scoreA - scoreB;
+        if (Math.abs(diff) > 0.05) return diff;
+        return (b.likeCount || 0) - (a.likeCount || 0);
+      })
       .slice(0, 6)
       .map((c) => ({
         text: c.text,

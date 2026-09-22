@@ -30,7 +30,7 @@ const STEPS = [
   },
 ];
 
-export function PipelineStepper({ phase }) {
+export function PipelineStepper({ phase, compact = false }) {
   const getStepStatus = (index) => {
     let activeIndex = 0;
     if (phase === PHASES.FETCHING_CONTEXT || phase === PHASES.CONNECTING) activeIndex = 0;
@@ -45,13 +45,15 @@ export function PipelineStepper({ phase }) {
   };
 
   return (
-    <div className="stepper-container">
+    <div className={`stepper-container ${compact ? 'stepper-compact' : ''}`}>
       {STEPS.map((step, idx) => {
         const status = getStepStatus(idx);
+        const isJevStep = step.key === 'jev';
+
         return (
           <React.Fragment key={step.key}>
-            <div className={`step-item ${status}`}>
-              <div className="step-icon-wrap">
+            <div className={`step-item ${status} ${isJevStep ? 'step-jev' : ''}`}>
+              <div className={`step-icon-wrap ${isJevStep && status === 'active' ? 'pulse-radar' : ''}`}>
                 {status === 'completed' ? (
                   <Check size={14} />
                 ) : status === 'active' ? (
@@ -60,7 +62,14 @@ export function PipelineStepper({ phase }) {
                   idx + 1
                 )}
               </div>
-              <span>{step.label}</span>
+              <div className="step-label-group">
+                <span>{step.label}</span>
+                {isJevStep && (
+                  <span className="step-usp-badge">
+                    ⚡ Jev Engine
+                  </span>
+                )}
+              </div>
             </div>
 
             {idx < STEPS.length - 1 && (
