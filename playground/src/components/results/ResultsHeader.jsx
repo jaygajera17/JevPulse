@@ -1,7 +1,7 @@
 import React from 'react';
-import { Share2, RotateCcw, Timer } from 'lucide-react';
+import { RotateCcw, Timer } from 'lucide-react';
 
-export function ResultsHeader({ meta, elapsedSeconds, onShare, onReset }) {
+export function ResultsHeader({ meta, elapsedSeconds, onReset }) {
   const timeDisplay = elapsedSeconds && elapsedSeconds !== '0.0' ? `${elapsedSeconds}s` : null;
 
   return (
@@ -58,9 +58,6 @@ export function ResultsHeader({ meta, elapsedSeconds, onShare, onReset }) {
       </div>
 
       <div className="results-actions">
-        <button className="btn-secondary" onClick={onShare}>
-          <Share2 size={14} /> Share card
-        </button>
         <button className="btn-primary" onClick={onReset}>
           <RotateCcw size={14} /> Analyze another video
         </button>

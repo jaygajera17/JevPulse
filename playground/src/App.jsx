@@ -14,7 +14,6 @@ import { AudienceSignals } from './components/results/AudienceSignals';
 import { AudiencePulse } from './components/results/AudiencePulse';
 import { CommentBreakdown } from './components/results/CommentBreakdown';
 import { EvidenceDrawer } from './components/shared/EvidenceDrawer';
-import { ShareCard } from './components/shared/ShareCard';
 import { useSSEAnalysis, PHASES } from './hooks/useSSEAnalysis';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
 
@@ -33,7 +32,6 @@ export default function App() {
   } = useSSEAnalysis();
 
   const [selectedCriterion, setSelectedCriterion] = useState(null);
-  const [isShareOpen, setIsShareOpen] = useState(false);
 
   const isAnalyzing =
     phase === PHASES.CONNECTING ||
@@ -129,7 +127,6 @@ export default function App() {
             <ResultsHeader
               meta={results.meta}
               elapsedSeconds={elapsedSeconds}
-              onShare={() => setIsShareOpen(true)}
               onReset={reset}
             />
 
@@ -188,12 +185,6 @@ export default function App() {
         criterion={selectedCriterion}
       />
 
-      {/* Share Card Modal */}
-      <ShareCard
-        isOpen={isShareOpen}
-        onClose={() => setIsShareOpen(false)}
-        results={results}
-      />
     </>
   );
 }

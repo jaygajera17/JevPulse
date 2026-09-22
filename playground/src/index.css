@@ -1264,46 +1264,6 @@ input {
   background: #F1F3F9;
 }
 
-/* Share Card Modal */
-.share-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(17, 24, 39, 0.5);
-  backdrop-filter: blur(8px);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.share-card-container {
-  background: #FFFFFF;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
-  max-width: 580px;
-  width: 100%;
-  padding: 32px;
-  box-shadow: var(--shadow-lg);
-  position: relative;
-}
-
-.share-card-watermark {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.share-card-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-}
 
 /* How It Works Architecture Visualizer */
 .how-it-works-box {

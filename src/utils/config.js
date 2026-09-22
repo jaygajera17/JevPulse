@@ -12,7 +12,7 @@ export const config = {
    *   all available comments are analyzed as-is without error or truncation.
    * - If a video has more comments than this limit, fetching stops once maxComments is reached.
    */
-  maxComments: Number(process.env.MAX_COMMENTS) || 1500,
+  maxComments: Number(process.env.MAX_COMMENTS) || 5000,
 
   /**
    * YouTube comment fetching options
