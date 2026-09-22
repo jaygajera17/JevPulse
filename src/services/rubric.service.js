@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { GoogleGenAI } from '@google/genai';
 import { logger } from '../utils/logger.js';
+import { config } from '../utils/config.js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -16,6 +17,8 @@ Each criterion in the "criteria" array MUST follow this exact schema:
   "id": "snake_case_identifier",
   "name": "Human Readable Label (2-4 words)",
   "question": "A yes/no question answerable from a single comment. MUST contain the phrase 'this comment'. For example: 'Does this comment praise the new website design?' or 'Does this comment express frustration with the changes?'",
+  "true_criteria": "A concise description of what qualifies as a YES (e.g. 'Explicitly praises the UI, layout, or design aesthetic')",
+  "false_criteria": "A concise description of what qualifies as a NO (e.g. 'Complains about the design, discusses unrelated topics, or is neutral')",
   "type": "noul",
   "aggregation": "percentage"
 }
@@ -25,7 +28,8 @@ Rules for criteria:
 2. Every question MUST contain the phrase "this comment".
 3. Questions must be SPECIFIC to this video's actual topic, claims, features, jokes, or controversies — NOT generic questions like "Is this a positive comment?" or "Is this comment helpful?".
 4. Pick criteria where audience agreement or disagreement matters (e.g. support vs opposition to a change, technical accuracy, humor appreciation, shared frustration, specific feature feedback).
-5. All criteria type MUST be "noul" and aggregation MUST be "percentage".`;
+5. All criteria type MUST be "noul" and aggregation MUST be "percentage".
+6. Every criterion MUST include concise "true_criteria" and "false_criteria" descriptions that define clear, unambiguous decision boundaries for the question.`;
 
 /**
  * Validate and sanitize the rubric returned by Gemini.
@@ -66,6 +70,8 @@ function validateRubric(rubric) {
       id,
       name,
       question,
+      true_criteria: c.true_criteria || `The comment clearly affirms or demonstrates: ${name}`,
+      false_criteria: c.false_criteria || `The comment does not affirm, disagrees with, or is irrelevant to: ${name}`,
       type: 'noul',
       aggregation: 'percentage',
     };
@@ -91,7 +97,7 @@ export async function generateRubric(videoContext, sampleComments = []) {
   const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
   const sampleCommentsText = sampleComments
-    .slice(0, 20)
+    .slice(0, config.rubric.sampleCommentsCount)
     .map((c, i) => `[Comment ${i + 1}]: "${c.text.replace(/\n+/g, ' ').slice(0, 200)}"`)
     .join('\n');
 
@@ -110,11 +116,8 @@ ${sampleCommentsText || '(No comments provided)'}
 
 Generate the dynamic analysis rubric as JSON according to the instructions.`;
 
-  const candidateModels = [
-    'gemini-2.5-flash-lite',
-    'gemini-3.1-flash-lite',
-    'gemini-3.8-flash',
-    'gemini-3.5-flash',
+  const candidateModels = config.rubric?.candidateModels || [
+    'gemini-3.5-flash-lite',
   ];
   let lastError = null;
 
@@ -126,7 +129,6 @@ Generate the dynamic analysis rubric as JSON according to the instructions.`;
         contents: `${RUBRIC_SYSTEM_PROMPT}\n\n${userPrompt}`,
         config: {
           responseMimeType: 'application/json',
-          temperature: 0.2,
         },
       });
 
@@ -170,6 +172,8 @@ function getFallbackRubric(videoContext) {
           id: 'platform_enthusiasm',
           name: 'Platform Enthusiasm',
           question: 'Does this comment express enthusiasm, gratitude, or praise for the new platform or features?',
+          true_criteria: 'Expresses clear enthusiasm, excitement, gratitude, or praise for the platform, features, or course.',
+          false_criteria: 'Criticizes the platform, reports issues, asks unrelated questions, or lacks positive sentiment.',
           type: 'noul',
           aggregation: 'percentage',
         },
@@ -177,6 +181,8 @@ function getFallbackRubric(videoContext) {
           id: 'content_transition_concern',
           name: 'Content / Sheet Concerns',
           question: 'Does this comment express concern, worry, or criticism regarding previous free resources, sheets, or changes?',
+          true_criteria: 'Expresses concern, worry, skepticism, or complaint regarding free resource changes or platform transitions.',
+          false_criteria: 'Happy with changes, unconcerned about previous resources, or discussing other topics.',
           type: 'noul',
           aggregation: 'percentage',
         },
@@ -184,6 +190,8 @@ function getFallbackRubric(videoContext) {
           id: 'feature_or_bug_feedback',
           name: 'Feature or Bug Feedback',
           question: 'Does this comment point out a bug, issue, or suggest a specific feature for the website?',
+          true_criteria: 'Points out a bug, glitch, UX issue, or suggests a specific feature or improvement.',
+          false_criteria: 'General commentary or praise without any bug report or feature request.',
           type: 'noul',
           aggregation: 'percentage',
         },
@@ -191,6 +199,8 @@ function getFallbackRubric(videoContext) {
           id: 'recommendation_intent',
           name: 'Recommendation Intent',
           question: 'Does this comment recommend this creator or platform to other learners and peers?',
+          true_criteria: 'Recommends the creator or platform to peers, or states it is essential for learning.',
+          false_criteria: 'Does not recommend the platform or discourages others from using it.',
           type: 'noul',
           aggregation: 'percentage',
         },
@@ -206,6 +216,8 @@ function getFallbackRubric(videoContext) {
         id: 'content_appreciation',
         name: 'Content Appreciation',
         question: 'Does this comment express appreciation or positive sentiment towards the video content?',
+        true_criteria: 'Expresses positive sentiment, enjoyment, thanks, or praise for the video content.',
+        false_criteria: 'Neutral, critical, unappreciative, or off-topic remark.',
         type: 'noul',
         aggregation: 'percentage',
       },
@@ -213,6 +225,8 @@ function getFallbackRubric(videoContext) {
         id: 'critical_feedback',
         name: 'Critical Feedback',
         question: 'Does this comment express disagreement, criticism, or critique of the points made in the video?',
+        true_criteria: 'Expresses disagreement, criticism, disappointment, or identifies flaws in the video.',
+        false_criteria: 'Agrees with the video, offers praise, or makes neutral remarks.',
         type: 'noul',
         aggregation: 'percentage',
       },
@@ -220,6 +234,8 @@ function getFallbackRubric(videoContext) {
         id: 'audience_engagement',
         name: 'Audience Engagement',
         question: 'Does this comment actively discuss the core topic or ask an insightful follow-up question?',
+        true_criteria: 'Actively discusses the core subject matter, shares relevant thoughts, or asks an insightful question.',
+        false_criteria: 'Superficial greeting, spam, timestamp only, or off-topic remark.',
         type: 'noul',
         aggregation: 'percentage',
       },

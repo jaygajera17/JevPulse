@@ -1,8 +1,8 @@
 import { TypeSafeClient, noul, score, choice } from '@typesafe-ai/sdk';
 import { logger } from '../utils/logger.js';
+import { config } from '../utils/config.js';
 
 const client = new TypeSafeClient();
-const BATCH_SIZE = 15;
 
 /**
  * Split an array into chunks of a given size.
@@ -80,9 +80,18 @@ function buildQuestions(batch, rubric) {
         qText = `${qText} (Evaluate: ${commentRef})`;
       }
 
-      questions[`c${i}_${criterion.id}`] = noul({
+      const noulConfig = {
         instructions: qText,
-      });
+      };
+
+      if (criterion.true_criteria || criterion.false_criteria) {
+        noulConfig.criteria = {
+          true: criterion.true_criteria || `Affirms or satisfies: ${criterion.name || 'this criterion'}`,
+          false: criterion.false_criteria || `Does not satisfy or affirm: ${criterion.name || 'this criterion'}`,
+        };
+      }
+
+      questions[`c${i}_${criterion.id}`] = noul(noulConfig);
     }
   }
 
@@ -136,25 +145,66 @@ async function analyzeBatch(batch, rubric, videoTitle) {
 }
 
 /**
- * Analyze all comments in batches using Jev System One.
+ * Analyze all comments in batches using Jev System One with bounded concurrency.
  *
  * @param {Array<{text: string, likeCount: number, author: string, publishedAt: string}>} comments
  * @param {{video_type: string, video_summary: string, criteria: Array}} rubric
  * @param {string} videoTitle
+ * @param {object} [options]
+ * @param {number} [options.batchSize] - Number of comments per batch
+ * @param {number} [options.concurrency] - Number of concurrent batch workers
+ * @param {Function} [options.onBatchProgress] - Callback with { batchIndex, totalBatches, processedCount, totalComments, decisionsCount }
  * @returns {Promise<Array<{text: string, likeCount: number, author: string, layer1: object, layer2: object}>>}
  */
-export async function analyzeComments(comments, rubric, videoTitle = 'Unknown Video') {
-  const batches = chunk(comments, BATCH_SIZE);
-  const allResults = [];
+export async function analyzeComments(
+  comments,
+  rubric,
+  videoTitle = 'Unknown Video',
+  {
+    onBatchProgress,
+    batchSize = config.jev.batchSize,
+    concurrency = config.jev.concurrency,
+  } = {}
+) {
+  const batches = chunk(comments, batchSize);
+  const results = new Array(batches.length);
+  let nextIndex = 0;
+  let completedBatches = 0;
+  let processedComments = 0;
 
-  logger.info(`Analyzing ${comments.length} comments in ${batches.length} batches with Jev (Layer 1 + Layer 2)...`);
+  const criteriaCount = rubric.criteria?.length || 0;
+  const decisionsPerComment = 4 + criteriaCount;
 
-  for (let i = 0; i < batches.length; i++) {
-    logger.debug(`Processing batch ${i + 1}/${batches.length} (${batches[i].length} comments)...`);
-    const results = await analyzeBatch(batches[i], rubric, videoTitle);
-    allResults.push(...results);
+  logger.info(
+    `Analyzing ${comments.length} comments in ${batches.length} batches with Jev (concurrency: ${concurrency})...`
+  );
+
+  async function worker() {
+    while (nextIndex < batches.length) {
+      const i = nextIndex++;
+      const batch = batches[i];
+      logger.debug(`Processing batch ${i + 1}/${batches.length} (${batch.length} comments)...`);
+
+      results[i] = await analyzeBatch(batch, rubric, videoTitle);
+
+      completedBatches++;
+      processedComments += batch.length;
+
+      if (typeof onBatchProgress === 'function') {
+        onBatchProgress({
+          batchIndex: completedBatches,
+          totalBatches: batches.length,
+          processedCount: processedComments,
+          totalComments: comments.length,
+          decisionsCount: processedComments * decisionsPerComment,
+        });
+      }
+    }
   }
 
-  logger.info(`Jev analysis complete: evaluated ${allResults.length} comments`);
-  return allResults;
+  const workerCount = Math.min(concurrency, batches.length);
+  await Promise.all(Array.from({ length: workerCount }, worker));
+
+  logger.info(`Jev analysis complete: evaluated ${comments.length} comments`);
+  return results.flat();
 }

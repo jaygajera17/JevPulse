@@ -1,6 +1,7 @@
 /**
  * Audience Consensus & Signals Aggregator
  */
+import { config } from '../utils/config.js';
 
 /**
  * Generate a visual ASCII bar chart.
@@ -49,8 +50,12 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
   }
 
   // 1. Layer 1 Aggregations: Opinion filtering and Comment Types
+  // Jev Score is an expected value float in [0.0, 2.0]. specificity >= 0.7 captures comments
+  // leaning into moderate (1.0) or high (2.0) specificity.
+  const opThresh = config.consensus?.opinionThreshold ?? 0.5;
+  const specThresh = config.consensus?.specificityThreshold ?? 0.7;
   const substantiveComments = analyzedComments.filter(
-    (c) => c.layer1.isOpinion >= 0.5 || c.layer1.specificity >= 1
+    (c) => c.layer1.isOpinion >= opThresh || c.layer1.specificity >= specThresh
   );
 
   const typeCounts = {};
@@ -60,10 +65,11 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
   }
 
   // 2. Layer 2 Aggregations: Dynamic Rubric Consensus
+  const posStanceThresh = config.consensus?.positiveStanceThreshold ?? 0.6;
   const consensusCriteria = rubric.criteria.map((criterion) => {
     const scores = substantiveComments.map((c) => c.layer2[criterion.id] ?? 0);
-    // Positive stance: noul >= 0.6
-    const positiveCount = scores.filter((s) => s >= 0.6).length;
+    // Positive stance: noul >= positiveStanceThreshold
+    const positiveCount = scores.filter((s) => s >= posStanceThresh).length;
     const evaluatedCount = substantiveComments.length;
     const percentage = evaluatedCount > 0 ? Math.round((positiveCount / evaluatedCount) * 100) : 0;
 
@@ -73,19 +79,50 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
         ? (scores.reduce((a, b) => a + b, 0) / evaluatedCount).toFixed(2)
         : '0.00';
 
+    // Evidence comments for this criterion
+    const supporting = substantiveComments
+      .filter((c) => (c.layer2[criterion.id] ?? 0) >= 0.6)
+      .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
+      .slice(0, 6)
+      .map((c) => ({
+        text: c.text,
+        author: c.author,
+        likeCount: c.likeCount || 0,
+        publishedAt: c.publishedAt,
+        score: c.layer2[criterion.id],
+      }));
+
+    const opposing = substantiveComments
+      .filter((c) => (c.layer2[criterion.id] ?? 0) <= 0.4)
+      .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
+      .slice(0, 6)
+      .map((c) => ({
+        text: c.text,
+        author: c.author,
+        likeCount: c.likeCount || 0,
+        publishedAt: c.publishedAt,
+        score: c.layer2[criterion.id],
+      }));
+
     return {
       id: criterion.id,
       name: criterion.name,
       question: criterion.question,
+      true_criteria: criterion.true_criteria,
+      false_criteria: criterion.false_criteria,
       percentage,
       positiveCount,
       evaluatedCount,
       avgScore,
+      evidence: {
+        supporting,
+        opposing,
+      },
     };
   });
 
   // 3. Layer 1 Signals: Extract top comments by category
-  const getTopComments = (filterFn, limit = 3) => {
+  const getTopComments = (filterFn, limit = 4) => {
     return [...analyzedComments]
       .filter(filterFn)
       .sort((a, b) => b.likeCount - a.likeCount)
@@ -123,6 +160,11 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
       videoId: videoContext.videoId || '',
       videoTitle: videoContext.title || 'Untitled',
       channelTitle: videoContext.channelTitle || 'Unknown',
+      thumbnailUrl: videoContext.videoId
+        ? `https://img.youtube.com/vi/${videoContext.videoId}/hqdefault.jpg`
+        : '',
+      viewCount: videoContext.viewCount || '0',
+      commentCount: videoContext.commentCount || '0',
       videoType: rubric.video_type,
       videoSummary: rubric.video_summary,
       totalAnalyzed: total,

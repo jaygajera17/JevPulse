@@ -1,6 +1,3 @@
-/**
- * Minimal application logger utility.
- */
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 
 const levels = {

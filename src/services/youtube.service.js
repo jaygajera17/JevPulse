@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { fetchTranscript } from 'youtube-transcript';
 import { logger } from '../utils/logger.js';
+import { config } from '../utils/config.js';
 
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const COMMENT_THREADS_URL = 'https://www.googleapis.com/youtube/v3/commentThreads';
@@ -61,7 +62,7 @@ export async function fetchVideoMetadata(videoUrlOrId) {
   }
 
   const params = new URLSearchParams({
-    part: 'snippet',
+    part: 'snippet,statistics',
     id: videoId,
     key: YOUTUBE_API_KEY,
   });
@@ -87,6 +88,8 @@ export async function fetchVideoMetadata(videoUrlOrId) {
     title: item.snippet.title || '',
     description: item.snippet.description || '',
     channelTitle: item.snippet.channelTitle || '',
+    viewCount: item.statistics?.viewCount || '0',
+    commentCount: item.statistics?.commentCount || '0',
   };
 }
 
@@ -98,7 +101,10 @@ export async function fetchVideoMetadata(videoUrlOrId) {
  * @param {number} options.maxTranscriptChars
  * @returns {Promise<{videoId: string, title: string, description: string, channelTitle: string, transcript: string}>}
  */
-export async function fetchVideoContext(videoUrlOrId, { maxTranscriptChars = 3000 } = {}) {
+export async function fetchVideoContext(
+  videoUrlOrId,
+  { maxTranscriptChars = config.rubric.maxTranscriptChars } = {}
+) {
   const videoId = extractVideoId(videoUrlOrId);
   logger.info(`Fetching video context for ID: ${videoId}`);
 
@@ -121,19 +127,32 @@ export async function fetchVideoContext(videoUrlOrId, { maxTranscriptChars = 300
     title: metadata.title,
     description: metadata.description,
     channelTitle: metadata.channelTitle,
+    viewCount: metadata.viewCount,
+    commentCount: metadata.commentCount,
     transcript,
   };
 }
 
 /**
- * Fetch top-level comments from a YouTube video.
+ * Fetch comments from a YouTube video, including nested thread replies if enabled.
  *
  * @param {string} videoUrlOrId
  * @param {object} options
- * @param {number} options.maxComments
- * @returns {Promise<{videoId: string, comments: Array<{text: string, likeCount: number, publishedAt: string, author: string}>}>}
+ * @param {number} [options.maxComments]
+ * @param {boolean} [options.includeReplies]
+ * @param {string} [options.order]
+ * @param {boolean} [options.fallbackToTimeOrder]
+ * @returns {Promise<{videoId: string, comments: Array<{text: string, likeCount: number, publishedAt: string, author: string, isReply?: boolean}>}>}
  */
-export async function fetchComments(videoUrlOrId, { maxComments = 200 } = {}) {
+export async function fetchComments(
+  videoUrlOrId,
+  {
+    maxComments = config.maxComments,
+    includeReplies = config.youtube?.includeReplies ?? true,
+    order = config.youtube?.order ?? 'relevance',
+    fallbackToTimeOrder = config.youtube?.fallbackToTimeOrder ?? true,
+  } = {}
+) {
   const videoId = extractVideoId(videoUrlOrId);
 
   if (!YOUTUBE_API_KEY) {
@@ -141,49 +160,99 @@ export async function fetchComments(videoUrlOrId, { maxComments = 200 } = {}) {
   }
 
   const comments = [];
-  let pageToken = null;
+  const seenIds = new Set();
+  const part = includeReplies ? 'snippet,replies' : 'snippet';
 
-  logger.info(`Fetching comments for video ${videoId} (limit: ${maxComments})...`);
+  logger.info(
+    `Fetching comments for video ${videoId} (limit: ${maxComments}, replies: ${includeReplies}, order: ${order})...`
+  );
 
-  while (comments.length < maxComments) {
-    const params = new URLSearchParams({
-      part: 'snippet',
-      videoId,
-      key: YOUTUBE_API_KEY,
-      maxResults: String(Math.min(100, maxComments - comments.length)),
-      order: 'relevance',
-      textFormat: 'plainText',
-    });
+  async function fetchPages(sortOrder) {
+    let pageToken = null;
 
-    if (pageToken) {
-      params.set('pageToken', pageToken);
-    }
+    while (comments.length < maxComments) {
+      const params = new URLSearchParams({
+        part,
+        videoId,
+        key: YOUTUBE_API_KEY,
+        maxResults: String(Math.min(100, maxComments - comments.length)),
+        order: sortOrder,
+        textFormat: 'plainText',
+      });
 
-    const res = await fetch(`${COMMENT_THREADS_URL}?${params}`);
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(
-        `YouTube Comments API error ${res.status}: ${err?.error?.message || res.statusText}`
-      );
-    }
-
-    const data = await res.json();
-
-    for (const item of data.items || []) {
-      const snippet = item.snippet?.topLevelComment?.snippet;
-      if (snippet) {
-        comments.push({
-          text: snippet.textDisplay,
-          likeCount: snippet.likeCount || 0,
-          publishedAt: snippet.publishedAt,
-          author: snippet.authorDisplayName,
-        });
+      if (pageToken) {
+        params.set('pageToken', pageToken);
       }
-    }
 
-    pageToken = data.nextPageToken;
-    if (!pageToken) break;
+      const res = await fetch(`${COMMENT_THREADS_URL}?${params}`);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          `YouTube Comments API error ${res.status}: ${err?.error?.message || res.statusText}`
+        );
+      }
+
+      const data = await res.json();
+      const items = data.items || [];
+      if (items.length === 0) break;
+
+      for (const item of items) {
+        // 1. Top-level comment
+        const top = item.snippet?.topLevelComment;
+        if (top && !seenIds.has(top.id)) {
+          seenIds.add(top.id);
+          const snippet = top.snippet;
+          if (snippet?.textDisplay) {
+            comments.push({
+              id: top.id,
+              text: snippet.textDisplay,
+              likeCount: snippet.likeCount || 0,
+              publishedAt: snippet.publishedAt,
+              author: snippet.authorDisplayName,
+              isReply: false,
+            });
+            if (comments.length >= maxComments) break;
+          }
+        }
+
+        // 2. Nested thread replies
+        if (includeReplies && item.replies?.comments) {
+          for (const reply of item.replies.comments) {
+            if (reply && !seenIds.has(reply.id)) {
+              seenIds.add(reply.id);
+              const snippet = reply.snippet;
+              if (snippet?.textDisplay) {
+                comments.push({
+                  id: reply.id,
+                  text: snippet.textDisplay,
+                  likeCount: snippet.likeCount || 0,
+                  publishedAt: snippet.publishedAt,
+                  author: snippet.authorDisplayName,
+                  isReply: true,
+                });
+                if (comments.length >= maxComments) break;
+              }
+            }
+          }
+        }
+      }
+
+      pageToken = data.nextPageToken;
+      if (!pageToken) break;
+    }
+  }
+
+  // 1. Fetch with primary order (e.g. relevance)
+  await fetchPages(order);
+
+  // 2. If relevance stops at YouTube's 500 cap and maxComments is still not reached,
+  // continue with 'time' order to fetch additional comments
+  if (order === 'relevance' && fallbackToTimeOrder && comments.length < maxComments) {
+    logger.info(
+      `Primary 'relevance' fetch reached ${comments.length} comments; continuing with 'time' ordering to reach limit (${maxComments})...`
+    );
+    await fetchPages('time');
   }
 
   logger.info(`Fetched ${comments.length} comments for video ${videoId}`);

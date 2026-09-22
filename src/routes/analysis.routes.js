@@ -1,7 +1,14 @@
 import { Router } from 'express';
-import { analyzeVideo } from '../controllers/analysis.controller.js';
+import { analyzeVideo, streamAnalysis } from '../controllers/analysis.controller.js';
 
 const router = Router();
+
+/**
+ * @route   GET /analyze/stream (or /api/analyze/stream)
+ * @desc    Stream YouTube comment consensus analysis in real-time via SSE
+ * @access  Public
+ */
+router.get('/analyze/stream', streamAnalysis);
 
 /**
  * @route   POST /analyze (or /api/analyze)
