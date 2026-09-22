@@ -10,15 +10,15 @@ const RUBRIC_SYSTEM_PROMPT = `You analyze YouTube videos and generate an analysi
 Given the video title, description, transcript excerpt, and sample comments, produce a JSON object with:
 - "video_type": A short label (e.g. "technical_tutorial", "comedy", "product_review", "podcast", "educational_announcement", "gaming", "vlog")
 - "video_summary": One clear sentence describing what the video is about
-- "criteria": An array of 3 to 6 analysis criteria
+- "criteria": An array of 3 to 5 analysis criteria
 
 Each criterion in the "criteria" array MUST follow this exact schema:
 {
   "id": "snake_case_identifier",
   "name": "Human Readable Label (2-4 words)",
-  "question": "A yes/no question answerable from a single comment. MUST contain the phrase 'this comment'. For example: 'Does this comment praise the new website design?' or 'Does this comment express frustration with the changes?'",
-  "true_criteria": "A concise description of what qualifies as a YES (e.g. 'Explicitly praises the UI, layout, or design aesthetic')",
-  "false_criteria": "A concise description of what qualifies as a NO (e.g. 'Complains about the design, discusses unrelated topics, or is neutral')",
+  "question": "A yes/no question answerable from a single comment. MUST contain the phrase 'this comment'. For example: 'Does this comment praise the clarity and depth of the explanation?' or 'Does this comment express frustration with the pacing or difficulty?'",
+  "true_criteria": "A concise description of what qualifies as a YES",
+  "false_criteria": "A concise description of what qualifies as a NO",
   "type": "noul",
   "aggregation": "percentage"
 }
@@ -26,10 +26,11 @@ Each criterion in the "criteria" array MUST follow this exact schema:
 Rules for criteria:
 1. Every question MUST be answerable from an INDIVIDUAL comment alone (no cross-comment comparison).
 2. Every question MUST contain the phrase "this comment".
-3. Questions must be SPECIFIC to this video's actual topic, claims, features, jokes, or controversies — NOT generic questions like "Is this a positive comment?" or "Is this comment helpful?".
-4. Pick criteria where audience agreement or disagreement matters (e.g. support vs opposition to a change, technical accuracy, humor appreciation, shared frustration, specific feature feedback).
-5. All criteria type MUST be "noul" and aggregation MUST be "percentage".
-6. Every criterion MUST include concise "true_criteria" and "false_criteria" descriptions that define clear, unambiguous decision boundaries for the question.`;
+3. High-Resonance Themes: Questions MUST target BROAD, OVERARCHING THEMES, RECURRENT AUDIENCE SENTIMENTS, and MAJOR DISCUSSION PILLARS evident in the sample comments (e.g. pedagogical depth, clarity of explanations, practical real-world utility, product design reception, pacing, shared emotional impact).
+4. AVOID NICHE TRIVIA: Do NOT create criteria for isolated timestamps, minor jokes, or narrow sub-chapters (e.g. do not ask about a 5-minute sub-topic like 'hallucinations' in a 3-hour comprehensive course) unless a large fraction of the sample comments actively discuss it.
+5. High Applicability: Each criterion should be relevant and resonant to a substantial portion of commenters, capturing major consensus or key debates.
+6. Clear Decision Boundaries: Every criterion MUST include concise "true_criteria" and "false_criteria" descriptions defining what qualifies as YES vs NO.
+7. All criteria type MUST be "noul" and aggregation MUST be "percentage".`;
 
 /**
  * Validate and sanitize the rubric returned by Gemini.

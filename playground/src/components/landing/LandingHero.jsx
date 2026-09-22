@@ -7,8 +7,8 @@ const EXAMPLE_VIDEOS = [
     url: 'https://youtu.be/TbkUKCm3CHQ?si=cVUcARDsDCdYzZ-e',
   },
   {
-    label: 'Apple event - introducing IPhone Duo',
-    url: 'https://www.youtube.com/live/39BalPDuTo0?si=N2YFQTlGVFtVaIHH',
+    label: 'Anthropic - Introducing Fable 5',
+    url: 'https://youtu.be/Y9Wz2PV404E?si=XJXyPDSRybcCTTg0',
   },
   {
     label: 'Andrej Karapathy - deep dive into LLMs',

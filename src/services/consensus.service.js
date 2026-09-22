@@ -29,8 +29,16 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
   if (total === 0) {
     return {
       meta: {
+        videoId: videoContext.videoId || '',
+        title: videoContext.title || 'Untitled',
         videoTitle: videoContext.title || 'Untitled',
         channelTitle: videoContext.channelTitle || 'Unknown',
+        thumbnailUrl: videoContext.videoId
+          ? `https://img.youtube.com/vi/${videoContext.videoId}/hqdefault.jpg`
+          : '',
+        viewCount: videoContext.viewCount || '0',
+        commentCount: videoContext.commentCount || '0',
+        hasTranscript: Boolean(videoContext.transcript),
         videoType: rubric.video_type || 'general',
         videoSummary: rubric.video_summary || '',
         totalAnalyzed: 0,
@@ -68,10 +76,34 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
   const posStanceThresh = config.consensus?.positiveStanceThreshold ?? 0.6;
   const consensusCriteria = rubric.criteria.map((criterion) => {
     const scores = substantiveComments.map((c) => c.layer2[criterion.id] ?? 0);
-    // Positive stance: noul >= positiveStanceThreshold
-    const positiveCount = scores.filter((s) => s >= posStanceThresh).length;
     const evaluatedCount = substantiveComments.length;
+
+    // Positive stance: noul >= positiveStanceThreshold
+    const supportingComments = substantiveComments.filter(
+      (c) => (c.layer2[criterion.id] ?? 0) >= posStanceThresh
+    );
+    const positiveCount = supportingComments.length;
+
+    // Genuine opposing comments: low criterion score AND expressing criticism/disagreement/claim
+    const opposingComments = substantiveComments.filter(
+      (c) =>
+        (c.layer2[criterion.id] ?? 0) <= 0.35 &&
+        (c.layer1.commentType === 'criticism' ||
+          c.layer1.commentType === 'disagreement' ||
+          c.layer1.commentType === 'correction' ||
+          c.layer1.hasClaim >= 0.5)
+    );
+    const opposingCount = opposingComments.length;
+
+    // Total comments actively engaging with this specific theme
+    const mentionCount = positiveCount + opposingCount;
+
+    // Global percentage across all substantive comments
     const percentage = evaluatedCount > 0 ? Math.round((positiveCount / evaluatedCount) * 100) : 0;
+
+    // Stance ratio specifically among commenters who engaged with this topic
+    const stanceRatio =
+      mentionCount > 0 ? Math.round((positiveCount / mentionCount) * 100) : percentage;
 
     // Average confidence / intensity
     const avgScore =
@@ -80,8 +112,7 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
         : '0.00';
 
     // Evidence comments for this criterion
-    const supporting = substantiveComments
-      .filter((c) => (c.layer2[criterion.id] ?? 0) >= 0.6)
+    const supporting = supportingComments
       .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
       .slice(0, 6)
       .map((c) => ({
@@ -92,8 +123,7 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
         score: c.layer2[criterion.id],
       }));
 
-    const opposing = substantiveComments
-      .filter((c) => (c.layer2[criterion.id] ?? 0) <= 0.4)
+    const opposing = opposingComments
       .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
       .slice(0, 6)
       .map((c) => ({
@@ -111,7 +141,10 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
       true_criteria: criterion.true_criteria,
       false_criteria: criterion.false_criteria,
       percentage,
+      stanceRatio,
       positiveCount,
+      opposingCount,
+      mentionCount,
       evaluatedCount,
       avgScore,
       evidence: {
@@ -158,6 +191,7 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
   return {
     meta: {
       videoId: videoContext.videoId || '',
+      title: videoContext.title || 'Untitled',
       videoTitle: videoContext.title || 'Untitled',
       channelTitle: videoContext.channelTitle || 'Unknown',
       thumbnailUrl: videoContext.videoId
@@ -165,6 +199,7 @@ export function buildConsensus(analyzedComments, rubric, videoContext = {}) {
         : '',
       viewCount: videoContext.viewCount || '0',
       commentCount: videoContext.commentCount || '0',
+      hasTranscript: Boolean(videoContext.transcript),
       videoType: rubric.video_type,
       videoSummary: rubric.video_summary,
       totalAnalyzed: total,

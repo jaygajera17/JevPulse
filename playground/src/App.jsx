@@ -11,6 +11,7 @@ import { TopInsights } from './components/results/TopInsights';
 import { ConsensusGrid } from './components/results/ConsensusGrid';
 import { WhatViewersWant } from './components/results/WhatViewersWant';
 import { AudienceSignals } from './components/results/AudienceSignals';
+import { AudiencePulse } from './components/results/AudiencePulse';
 import { CommentBreakdown } from './components/results/CommentBreakdown';
 import { EvidenceDrawer } from './components/shared/EvidenceDrawer';
 import { ShareCard } from './components/shared/ShareCard';
@@ -143,9 +144,15 @@ export default function App() {
               }}
             />
 
+            <AudiencePulse
+              breakdown={results.typeBreakdown}
+              total={results.meta?.totalAnalyzed || commentsCount || 0}
+            />
+
             <TopInsights
               criteria={results.criteria}
               questions={results.signals?.questions}
+              suggestions={results.signals?.suggestions}
               onSelectCriterion={setSelectedCriterion}
             />
 

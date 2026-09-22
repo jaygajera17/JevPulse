@@ -70,6 +70,7 @@ export async function analyzeVideoConsensus(
     const emptyResult = {
       meta: {
         videoId,
+        title: videoContext.title,
         videoTitle: videoContext.title,
         channelTitle: videoContext.channelTitle,
         thumbnailUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
@@ -96,8 +97,16 @@ export async function analyzeVideoConsensus(
     return emptyResult;
   }
 
-  // Step 3: Generate Dynamic Rubric with Gemini
-  const sampleComments = comments.slice(0, config.rubric.sampleCommentsCount);
+  // Step 3: Generate Dynamic Rubric with Gemini using a representative sample
+  const sampleCount = config.rubric.sampleCommentsCount || 35;
+  const topLiked = [...comments]
+    .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
+    .slice(0, Math.min(15, comments.length));
+  const remaining = comments.filter((c) => !topLiked.includes(c));
+  const sampleComments = [
+    ...topLiked,
+    ...remaining.slice(0, Math.max(0, sampleCount - topLiked.length)),
+  ];
   const rubric = await generateRubric(videoContext, sampleComments);
 
   if (typeof onProgress === 'function') {

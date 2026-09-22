@@ -1,19 +1,32 @@
 import React from 'react';
-import { ArrowRight, HelpCircle, MessageSquare } from 'lucide-react';
+import { ArrowRight, HelpCircle, MessageSquare, Lightbulb, TrendingUp } from 'lucide-react';
 
-export function TopInsights({ criteria = [], questions = [], onSelectCriterion }) {
+export function TopInsights({
+  criteria = [],
+  questions = [],
+  suggestions = [],
+  onSelectCriterion,
+}) {
   if (!criteria || criteria.length === 0) return null;
 
-  // 1. Highest agreement criterion
-  const sortedByAgreement = [...criteria].sort((a, b) => b.percentage - a.percentage);
-  const topConsensus = sortedByAgreement[0];
+  // 1. Highest agreement / highest positive count criterion
+  const sortedByPositiveCount = [...criteria].sort(
+    (a, b) => (b.positiveCount || 0) - (a.positiveCount || 0)
+  );
+  const topConsensus = sortedByPositiveCount[0];
 
-  // 2. Most divided criterion (closest to 50%, strictly distinct from topConsensus if possible)
-  const remaining = criteria.filter((c) => c.id !== topConsensus.id);
-  const candidates = remaining.length > 0 ? remaining : criteria;
-  const mostDivided = [...candidates].sort(
-    (a, b) => Math.abs(a.percentage - 50) - Math.abs(b.percentage - 50)
-  )[0];
+  // 2. Intelligent Middle Card:
+  // Is there a genuine debate / split opinion? (stance between 30% and 70% AND at least 5 opposing comments)
+  const remaining = criteria.filter((c) => c.id !== topConsensus?.id);
+  const genuinelyDivided = remaining.find((c) => {
+    const ratio = c.stanceRatio ?? c.percentage;
+    const oppCount = c.opposingCount || 0;
+    return ratio >= 30 && ratio <= 70 && oppCount >= 5;
+  });
+
+  // If no genuine split, pick top viewer suggestion or 2nd highest theme
+  const topSuggestion = suggestions?.[0];
+  const secondaryTheme = remaining[0];
 
   // 3. Top question from audience signals
   const topQuestion = questions?.[0];
@@ -27,12 +40,16 @@ export function TopInsights({ criteria = [], questions = [], onSelectCriterion }
   };
 
   const topConsensusQuote = getTopQuote(topConsensus, 'supporting');
-  const dividedAgreeQuote = getTopQuote(mostDivided, 'supporting');
-  const dividedDisagreeQuote = getTopQuote(mostDivided, 'opposing');
+  const dividedAgreeQuote = genuinelyDivided ? getTopQuote(genuinelyDivided, 'supporting') : null;
+  const dividedDisagreeQuote = genuinelyDivided ? getTopQuote(genuinelyDivided, 'opposing') : null;
+
+  const topPosCount =
+    topConsensus?.positiveCount ??
+    Math.round(((topConsensus?.evaluatedCount || 0) * (topConsensus?.percentage || 0)) / 100);
 
   return (
     <div className="hero-insights-grid">
-      {/* 🟢 Most Agreed-On Card */}
+      {/* 🟢 Card 1: Most Agreed-On / Top Resonance */}
       {topConsensus && (
         <div className="insight-card top-consensus">
           <div>
@@ -45,9 +62,11 @@ export function TopInsights({ criteria = [], questions = [], onSelectCriterion }
             </h3>
 
             <div className="insight-metric">
-              <span className="insight-metric-number">{topConsensus.percentage}%</span>
+              <span className="insight-metric-number">
+                {topPosCount.toLocaleString()}
+              </span>
               <span className="insight-metric-label">
-                among commenters · {topConsensus.positiveCount || Math.round(topConsensus.evaluatedCount * topConsensus.percentage / 100)} of {topConsensus.evaluatedCount || 0} comments
+                comments agreed {topConsensus.percentage > 0 ? `(${topConsensus.percentage}% of analyzed)` : ''}
               </span>
             </div>
 
@@ -64,14 +83,14 @@ export function TopInsights({ criteria = [], questions = [], onSelectCriterion }
               onClick={() => onSelectCriterion(topConsensus)}
               style={{ color: 'var(--pos-green)', fontWeight: 700 }}
             >
-              See the comments ({topConsensus.evaluatedCount || 0}) <ArrowRight size={14} />
+              See the comments ({topPosCount}) <ArrowRight size={14} />
             </button>
           </div>
         </div>
       )}
 
-      {/* 🟠 Most Divided Card */}
-      {mostDivided && (
+      {/* 🟠 Card 2: Either Genuinely Divided OR Top Suggestion / Secondary Theme */}
+      {genuinelyDivided ? (
         <div className="insight-card top-disagreement">
           <div>
             <div className="insight-tag">
@@ -79,15 +98,15 @@ export function TopInsights({ criteria = [], questions = [], onSelectCriterion }
             </div>
 
             <h3 className="insight-headline">
-              {mostDivided.name}
+              {genuinelyDivided.name}
             </h3>
 
             <div className="insight-metric">
-              <span className="insight-metric-number">
-                {mostDivided.percentage}% <span style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-muted)' }}>/ {100 - mostDivided.percentage}%</span>
+              <span className="insight-metric-number" style={{ fontSize: '24px' }}>
+                {genuinelyDivided.positiveCount || 0} Agree / {genuinelyDivided.opposingCount || 0} Disagree
               </span>
               <span className="insight-metric-label">
-                split opinion · {mostDivided.evaluatedCount || 0} comments
+                split debate across {genuinelyDivided.mentionCount || genuinelyDivided.evaluatedCount} comments
               </span>
             </div>
 
@@ -110,16 +129,84 @@ export function TopInsights({ criteria = [], questions = [], onSelectCriterion }
           <div style={{ marginTop: '16px' }}>
             <button
               className="view-evidence-btn"
-              onClick={() => onSelectCriterion(mostDivided)}
+              onClick={() => onSelectCriterion(genuinelyDivided)}
               style={{ color: 'var(--amber-gold)', fontWeight: 700 }}
             >
-              See both sides ({mostDivided.evaluatedCount || 0}) <ArrowRight size={14} />
+              See both sides ({genuinelyDivided.mentionCount || genuinelyDivided.evaluatedCount}) <ArrowRight size={14} />
             </button>
           </div>
         </div>
-      )}
+      ) : topSuggestion ? (
+        /* Unified sentiment: show Top Viewer Suggestion / Request */
+        <div className="insight-card" style={{ borderColor: 'var(--amber-gold)', background: '#FFFDF7' }}>
+          <div>
+            <div className="insight-tag" style={{ color: 'var(--amber-gold)', background: '#FEF3C7', borderColor: '#FDE68A' }}>
+              💡 Top viewer suggestion
+            </div>
 
-      {/* 🔵 People Are Asking (If questions exist) */}
+            <h3 className="insight-headline" style={{ fontSize: '17px' }}>
+              Community Request
+            </h3>
+
+            <div className="insight-metric">
+              <span className="insight-metric-number" style={{ color: 'var(--amber-gold)' }}>
+                {suggestions.length}
+              </span>
+              <span className="insight-metric-label">
+                viewer suggestions & requested improvements
+              </span>
+            </div>
+
+            <div className="insight-quote" style={{ borderLeftColor: 'var(--amber-gold)' }}>
+              "{topSuggestion.text}"
+            </div>
+
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              👍 {topSuggestion.likeCount || 0} likes {topSuggestion.author ? `· @${topSuggestion.author}` : ''}
+            </div>
+          </div>
+        </div>
+      ) : secondaryTheme ? (
+        /* Or secondary high-resonance theme */
+        <div className="insight-card" style={{ borderColor: '#E2E8F0' }}>
+          <div>
+            <div className="insight-tag" style={{ color: 'var(--jev-cyan)', background: '#EFF6FF', borderColor: '#BFDBFE' }}>
+              ⭐ Key theme
+            </div>
+
+            <h3 className="insight-headline">
+              {secondaryTheme.name}
+            </h3>
+
+            <div className="insight-metric">
+              <span className="insight-metric-number">
+                {(secondaryTheme.positiveCount ?? 0).toLocaleString()}
+              </span>
+              <span className="insight-metric-label">
+                comments affirmed {secondaryTheme.percentage > 0 ? `(${secondaryTheme.percentage}%)` : ''}
+              </span>
+            </div>
+
+            {getTopQuote(secondaryTheme, 'supporting') && (
+              <div className="insight-quote">
+                "{getTopQuote(secondaryTheme, 'supporting')}"
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: '16px' }}>
+            <button
+              className="view-evidence-btn"
+              onClick={() => onSelectCriterion(secondaryTheme)}
+              style={{ color: 'var(--jev-cyan)', fontWeight: 700 }}
+            >
+              See comments ({secondaryTheme.positiveCount ?? 0}) <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 🔵 Card 3: Top Viewer Question */}
       {topQuestion && (
         <div className="insight-card top-question">
           <div>
@@ -141,7 +228,7 @@ export function TopInsights({ criteria = [], questions = [], onSelectCriterion }
           </div>
 
           <div style={{ marginTop: '16px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
               See all questions in section below ↓
             </span>
           </div>
