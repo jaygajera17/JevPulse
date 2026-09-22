@@ -69,7 +69,7 @@ export const config = {
     /**
      * Candidate Gemini models for rubric generation
      */
-    candidateModels: ['gemini-3.5-flash-lite'],
+    candidateModels: ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.7-flash'],
   },
 
   /**
