@@ -143,7 +143,7 @@ Generate the dynamic analysis rubric as JSON according to the instructions.`;
       const parsed = JSON.parse(responseText);
       const validated = validateRubric(parsed);
 
-      logger.info(`Rubric generated successfully (type: "${validated.video_type}", criteria: ${validated.criteria.length})`);
+      logger.info(`Rubric generated successfully (type: "${validated.video_type}", criteria: ${validated.criteria.length}), model: ${model}`);
       return validated;
     } catch (err) {
       logger.warn(`Gemini model ${model} failed: ${err.message?.slice(0, 120)}`);
