@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { getApiUrl } from '../config/api';
 
 export const PHASES = {
   IDLE: 'IDLE',
@@ -72,7 +73,7 @@ export function useSSEAnalysis() {
 
     setPhase(PHASES.CONNECTING);
 
-    const streamUrl = `/api/analyze/stream?url=${encodeURIComponent(url.trim())}`;
+    const streamUrl = getApiUrl(`/api/analyze/stream?url=${encodeURIComponent(url.trim())}`);
     const es = new EventSource(streamUrl);
     eventSourceRef.current = es;
 
