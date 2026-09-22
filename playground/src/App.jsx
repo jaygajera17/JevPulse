@@ -132,7 +132,16 @@ export default function App() {
               onReset={reset}
             />
 
-            <VideoCard meta={results.meta} />
+            <VideoCard
+              meta={{
+                ...videoMeta,
+                ...results.meta,
+                title: results.meta?.title || results.meta?.videoTitle || videoMeta?.title,
+                channelTitle: results.meta?.channelTitle || videoMeta?.channelTitle,
+                thumbnailUrl: results.meta?.thumbnailUrl || videoMeta?.thumbnailUrl,
+                hasTranscript: results.meta?.hasTranscript ?? videoMeta?.hasTranscript,
+              }}
+            />
 
             <TopInsights
               criteria={results.criteria}

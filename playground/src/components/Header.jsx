@@ -1,12 +1,13 @@
 import React from 'react';
 import { RotateCcw } from 'lucide-react';
+import logoImg from '../assets/logo.png';
 
 export function Header({ onReset, showReset = false }) {
   return (
     <header className="header">
       <div className="app-container header-content">
         <div className="brand-badge" onClick={onReset} role="button" tabIndex={0}>
-          <div className="brand-icon">⚡</div>
+          <img src={logoImg} alt="JevPulse Logo" className="brand-logo-img" />
           <div>
             <div className="brand-name">
               jev<span>Pulse</span>

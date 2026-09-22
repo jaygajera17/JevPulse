@@ -12,16 +12,25 @@ function formatNumber(numStr) {
 export function VideoCard({ meta }) {
   if (!meta) return null;
 
+  const title = meta.title || meta.videoTitle || 'Loading video details...';
+  const channelTitle = meta.channelTitle || 'YouTube Channel';
+  const videoId = meta.videoId || '';
+  const thumbnailUrl =
+    meta.thumbnailUrl || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '');
+  const hasTranscript = meta.hasTranscript ?? Boolean(meta.transcript);
+
   return (
     <div className="video-card">
       <div className="video-thumb-container">
-        {meta.thumbnailUrl ? (
+        {thumbnailUrl ? (
           <img
-            src={meta.thumbnailUrl}
-            alt={meta.title || 'YouTube thumbnail'}
+            src={thumbnailUrl}
+            alt={title}
             className="video-thumb"
             onError={(e) => {
-              e.target.src = `https://img.youtube.com/vi/${meta.videoId}/0.jpg`;
+              if (videoId) {
+                e.target.src = `https://img.youtube.com/vi/${videoId}/0.jpg`;
+              }
             }}
           />
         ) : (
@@ -42,8 +51,8 @@ export function VideoCard({ meta }) {
       </div>
 
       <div className="video-meta">
-        <h3 className="video-title">{meta.title || 'Loading video details...'}</h3>
-        <p className="video-channel">{meta.channelTitle || 'YouTube Channel'}</p>
+        <h3 className="video-title">{title}</h3>
+        <p className="video-channel">{channelTitle}</p>
 
         <div className="video-stats-bar">
           <div className="video-stats-item">
@@ -54,7 +63,7 @@ export function VideoCard({ meta }) {
             <MessageSquare size={14} />
             <span>{formatNumber(meta.commentCount)} comments</span>
           </div>
-          {meta.hasTranscript && (
+          {hasTranscript && (
             <div
               className="video-stats-item"
               style={{ color: 'var(--pos-green)', background: 'var(--pos-green-glow)', padding: '2px 8px', borderRadius: '4px' }}

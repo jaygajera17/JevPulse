@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Copy, Check, Camera } from 'lucide-react';
+import logoImg from '../../assets/logo.png';
 
 export function ShareCard({ isOpen, onClose, results }) {
   const [copied, setCopied] = useState(false);
@@ -22,9 +23,12 @@ export function ShareCard({ isOpen, onClose, results }) {
       <div className="share-card-container" onClick={(e) => e.stopPropagation()}>
         <div className="share-card-watermark">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div className="brand-icon" style={{ width: '28px', height: '28px', fontSize: '14px' }}>
-              ⚡
-            </div>
+            <img
+              src={logoImg}
+              alt="JevPulse Logo"
+              className="brand-logo-img"
+              style={{ width: '28px', height: '28px' }}
+            />
             <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-primary)' }}>
               jev<span>Pulse</span>
             </span>

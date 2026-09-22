@@ -3,16 +3,16 @@ import { Search, ArrowRight, PlayCircle } from 'lucide-react';
 
 const EXAMPLE_VIDEOS = [
   {
-    label: 'Indian Dad ChatGPT (Demo)',
-    url: 'https://youtu.be/33s2ZPOwIVE',
+    label: 'Fireship - Jev',
+    url: 'https://youtu.be/TbkUKCm3CHQ?si=cVUcARDsDCdYzZ-e',
   },
   {
-    label: 'Tech Announcement Review',
-    url: 'https://youtu.be/33s2ZPOwIVE?si=1hQGQ6hPnF4HJGwi',
+    label: 'Apple event - introducing IPhone Duo',
+    url: 'https://www.youtube.com/live/39BalPDuTo0?si=N2YFQTlGVFtVaIHH',
   },
   {
-    label: 'Viral Product Showcase',
-    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    label: 'Andrej Karapathy - deep dive into LLMs',
+    url: 'https://youtu.be/7xTGNNLPyMI?si=YNguhBMC0ectK4rE',
   },
 ];
 

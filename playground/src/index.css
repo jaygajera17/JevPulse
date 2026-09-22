@@ -175,6 +175,15 @@ input {
   box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
 }
 
+.brand-logo-img {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+  display: block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
 .brand-name {
   font-size: 18px;
   font-weight: 800;
