@@ -11,8 +11,8 @@ const EXAMPLE_VIDEOS = [
     url: 'https://youtu.be/Y9Wz2PV404E?si=XJXyPDSRybcCTTg0',
   },
   {
-    label: 'Andrej Karapathy - deep dive into LLMs',
-    url: 'https://youtu.be/7xTGNNLPyMI?si=YNguhBMC0ectK4rE',
+    label: 'Gaurav Sen- System design Whatsapp',
+    url: 'https://youtu.be/vvhC64hQZMk?si=PAqcU2Mklvr7tMNx',
   },
 ];
 
